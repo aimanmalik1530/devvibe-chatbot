@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+
+# Company website content and generated embeddings
+/data/  
