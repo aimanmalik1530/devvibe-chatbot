@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from ollama import embed, chat
+from fastembed import TextEmbedding
+from groq import Groq
 import os
 from dotenv import load_dotenv
 from supabase import create_client
+embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -11,18 +13,25 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="DevVibe AI Chatbot")
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://devvibe-chatbot.vercel.app",
+        "https://devvibe-chatbot-ittogm7sv-dev-vibe2.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 class ChatRequest(BaseModel):
@@ -33,20 +42,18 @@ class ChatRequest(BaseModel):
 def home():
     return {"message": "DevVibe AI Chatbot Backend is running!"}
 
-def retrieve_context(question: str):
-    result = embed(
-        model="nomic-embed-text",
-        input=question
-    )
 
-    query_embedding = result["embeddings"][0]
+def retrieve_context(question: str):
+    query_embedding = list(
+        embedding_model.embed([question])
+    )[0].tolist()
 
     matches = supabase.rpc(
-        "match_documents",
+        "match_documents_fastembed",
         {
             "query_embedding": query_embedding,
-            "match_count": 5
-        }
+            "match_count": 5,
+        },
     ).execute()
 
     return matches.data
@@ -63,27 +70,27 @@ def chat_endpoint(request: ChatRequest):
             for doc in documents
         )
 
-    response = chat(
-        model="qwen2.5:3b",
+    response = groq_client.chat.completions.create(
+        model="openai/gpt-oss-20b",
         messages=[
             {
                 "role": "system",
                 "content": (
                     "You are the DevVibe website assistant. "
                     "Answer using only the provided website context. "
-                    "If the answer is not available in the context, "
-                    "say you couldn't find that information on the website. "
+                    "If the answer is unavailable, say you couldn't "
+                    "find that information on the website. "
                     "Never invent services, prices, or contact details."
-                )
+                ),
             },
             {
                 "role": "user",
                 "content": (
                     f"Website context:\n{context}\n\n"
                     f"User question: {request.message}"
-                )
-            }
-        ]
+                ),
+            },
+        ],
     )
 
-    return {"response": response["message"]["content"]}
+    return {"response": response.choices[0].message.content}
