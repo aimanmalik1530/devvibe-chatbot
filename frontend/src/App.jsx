@@ -17,13 +17,20 @@ function App() {
     setMessage("");
 
     try {
-      fetch("https://devvibe-chatbot-backend-poqb.vercel.app/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
-      });
+const response = await fetch(
+  "https://devvibe-chatbot-backend-poqb.vercel.app/chat",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: userMessage }),
+  }
+);
 
-      const data = await response.json();
+if (!response.ok) {
+  throw new Error(`Request failed: ${response.status}`);
+}
+
+const data = await response.json();
 
       setMessages((prev) => [
         ...prev,
