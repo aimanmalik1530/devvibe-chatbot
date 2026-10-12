@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import os
+os.environ["HF_HOME"] = "/tmp/huggingface"
+os.environ["FASTEMBED_CACHE_PATH"] = "/tmp/fastembed_cache"
 from fastembed import TextEmbedding
 from groq import Groq
-import os
 from dotenv import load_dotenv
 from supabase import create_client
 embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
