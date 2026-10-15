@@ -203,6 +203,12 @@ def get_query_intent(question: str) -> str:
     text = question.lower()
 
     if any(term in text for term in (
+        "social media", "social accounts", "social links",
+        "linkedin", "instagram", "facebook", "follow you",
+    )):
+        return "social"
+
+    if any(term in text for term in (
         "contact details", "contact information", "email address",
         "phone number", "whatsapp", "how can i contact",
         "where are you located", "your address",
@@ -401,6 +407,17 @@ def score_document(question: str, document: dict) -> int:
 
 
 def retrieve_context(question: str) -> list[dict]:
+    if get_query_intent(question) == "social":
+        social = (
+            supabase.table("devvibe_documents")
+            .select("title,content")
+            .eq("page_id", "SOCIAL_LINKS")
+            .execute()
+            .data
+        )
+        if social:
+            return social
+        
     query_embedding = list(
         embedding_model.embed([question])
     )[0].tolist()
@@ -633,6 +650,8 @@ RESPONSE STYLE:
 - Do not include links, "read more" lines, or URLs unless the user
   asks for a link. When they do, give the supplied link with one
   short sentence about what the page contains.
+- Exception: when asked about social media, give each supplied
+  account as a Markdown link, for example [LinkedIn](url).
 - Always format lists of services or projects as a Markdown bullet
   list. Start each line with "- " and put the name in bold, like:
   "- **Software Development** – one short sentence."
