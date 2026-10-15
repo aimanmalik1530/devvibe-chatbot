@@ -4,3 +4,5 @@ __pycache__/
 
 # Company website content and generated embeddings
 /data/  
+
+   devvibechatbot.txt
